@@ -52,6 +52,13 @@ RUN apt-get update \
     vim \
   && rm -rf /var/lib/apt/lists/*
 
+# Install Bun (required by qmd)
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# Install qmd – hybrid search sidecar for OpenClaw memory (BM25 + vectors + reranking)
+RUN bun install -g https://github.com/tobi/qmd
+
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash \
   && echo 'export PATH="$HOME/.local/bin:$PATH"' >> /root/.bashrc

@@ -1446,6 +1446,18 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
     }
   }
 
+  // Sync qmd memory backend config on every startup so it persists across redeploys.
+  if (isConfigured()) {
+    console.log("[wrapper] syncing qmd memory backend config...");
+    try {
+      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "memory.backend", "qmd"]));
+      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "memory.citations", "auto"]));
+      console.log("[wrapper] qmd memory config synced");
+    } catch (err) {
+      console.warn(`[wrapper] failed to sync qmd memory config: ${String(err)}`);
+    }
+  }
+
   // Auto-start the gateway if already configured so polling channels (Telegram/Discord/etc.)
   // work even if nobody visits the web UI.
   if (isConfigured()) {
