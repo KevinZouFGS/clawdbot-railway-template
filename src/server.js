@@ -357,7 +357,7 @@ app.get("/healthz", async (_req, res) => {
 app.get("/setup/app.js", requireSetupAuth, (_req, res) => {
   // Serve JS for /setup (kept external to avoid inline encoding/template issues)
   res.type("application/javascript");
-  res.send(fs.readFileSync(path.join(__dirname, "setup-app.js"), "utf8"));
+  res.send(fs.readFileSync(new URL("setup-app.js", import.meta.url), "utf8"));
 });
 
 app.get("/setup", requireSetupAuth, (_req, res) => {
