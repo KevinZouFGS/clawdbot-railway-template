@@ -64,7 +64,11 @@ ENV PATH="/root/.bun/bin:${PATH}"
 
 # Install qmd – hybrid search sidecar for OpenClaw memory (BM25 + vectors + reranking)
 # qmd bundles node-llama-cpp internally; bun resolves all deps including prebuilt binaries.
-RUN bun install -g https://github.com/tobi/qmd
+RUN bun install -g https://github.com/tobi/qmd \
+  && QMD_DIR="$(dirname "$(dirname "$(readlink -f "$(which qmd)")")")" \
+  && cd "$QMD_DIR" \
+  && bun install typescript \
+  && bun run build
 
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash \
