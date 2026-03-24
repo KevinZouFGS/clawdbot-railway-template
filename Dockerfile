@@ -50,6 +50,10 @@ RUN apt-get update \
     python3 \
     python3-venv \
     vim \
+    git \
+    cmake \
+    clang \
+    libgomp1 \
     libsqlite3-0 \
     libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
