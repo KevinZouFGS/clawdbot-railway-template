@@ -67,7 +67,7 @@ ENV PATH="/root/.bun/bin:${PATH}"
 RUN bun install -g https://github.com/tobi/qmd \
   && QMD_DIR="$(dirname "$(dirname "$(readlink -f "$(which qmd)")")")" \
   && cd "$QMD_DIR" \
-  && bun install typescript \
+  && bun install typescript@5 \
   && bun run build
 
 # Install Claude Code CLI
