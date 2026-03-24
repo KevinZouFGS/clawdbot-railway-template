@@ -50,6 +50,8 @@ RUN apt-get update \
     python3 \
     python3-venv \
     vim \
+    libsqlite3-0 \
+    libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Bun (required by qmd)
@@ -57,6 +59,7 @@ RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
 # Install qmd – hybrid search sidecar for OpenClaw memory (BM25 + vectors + reranking)
+# qmd bundles node-llama-cpp internally; bun resolves all deps including prebuilt binaries.
 RUN bun install -g https://github.com/tobi/qmd
 
 # Install Claude Code CLI
