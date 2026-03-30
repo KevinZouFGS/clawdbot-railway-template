@@ -93,6 +93,9 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev && npm cache clean --force
 
+# Playwright: install Chromium and its OS-level dependencies
+RUN npx playwright install --with-deps chromium
+
 # Copy built openclaw
 COPY --from=openclaw-build /openclaw /openclaw
 
