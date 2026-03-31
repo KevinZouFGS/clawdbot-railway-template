@@ -11,5 +11,8 @@ npm-debug.log*
 # Backup exports
 *.tar.gz
 
+# Claude
+.claude/
+
 # OS
 .DS_Store
