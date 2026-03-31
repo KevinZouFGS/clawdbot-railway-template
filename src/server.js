@@ -1316,6 +1316,18 @@ const proxy = httpProxy.createProxyServer({
   xfwd: true,
 });
 
+// Re-attach the request body for proxied requests.
+// express.json() consumes the raw body stream, so http-proxy would forward an empty body.
+// This re-serializes req.body and writes it to the proxy request.
+proxy.on("proxyReq", (proxyReq, req) => {
+  if (req.body && Object.keys(req.body).length > 0) {
+    const bodyData = JSON.stringify(req.body);
+    proxyReq.setHeader("Content-Type", "application/json");
+    proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+    proxyReq.write(bodyData);
+  }
+});
+
 proxy.on("error", (err, _req, res) => {
   console.error("[proxy]", err);
   try {

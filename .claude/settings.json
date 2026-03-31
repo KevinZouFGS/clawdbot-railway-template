@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"skill\\\\|NODE_PATH\\\\|PYTHONPATH\" /Users/openentertainment/Desktop/clawdbot-railway-template --include=*.js --include=*.json --include=*.md)"
+    ]
+  }
+}
