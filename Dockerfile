@@ -22,7 +22,7 @@ WORKDIR /openclaw
 
 # Pin to a known-good ref (tag/branch). Override in Railway template settings if needed.
 # Using a released tag avoids build breakage when `main` temporarily references unpublished packages.
-ARG OPENCLAW_GIT_REF=v2026.3.23-2
+ARG OPENCLAW_GIT_REF=v2026.4.8
 RUN git clone --depth 1 --branch "${OPENCLAW_GIT_REF}" https://github.com/openclaw/openclaw.git .
 
 # Patch: relax version requirements for packages that may reference unpublished versions.
@@ -38,6 +38,10 @@ RUN pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:install && pnpm ui:build
 
+
+# Build blogwatcher (RSS/blog feed scanner for ticket pipeline)
+FROM golang:1.24-bookworm AS blogwatcher-build
+RUN go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@latest
 
 # Runtime image
 FROM node:22-bookworm
@@ -102,6 +106,9 @@ COPY --from=openclaw-build /openclaw /openclaw
 # Provide an openclaw executable
 RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"' > /usr/local/bin/openclaw \
   && chmod +x /usr/local/bin/openclaw
+
+# blogwatcher – RSS/blog feed scanner
+COPY --from=blogwatcher-build /go/bin/blogwatcher /usr/local/bin/blogwatcher
 
 COPY src ./src
 
