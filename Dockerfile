@@ -72,6 +72,9 @@ RUN bun install -g https://github.com/tobi/qmd \
   && QMD_DIR="$(dirname "$(dirname "$(readlink -f "$(which qmd)")")")" \
   && cd "$QMD_DIR" \
   && bun install typescript@5 \
+  && if ! grep -q 'transaction<' src/db.ts; then \
+       sed -i -E '/^export interface Database \{/a\  transaction<T extends (...args: any[]) => any>(fn: T): T;' src/db.ts; \
+     fi \
   && bun run build
 
 # Install Claude Code CLI
