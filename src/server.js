@@ -68,6 +68,9 @@ function resolveGatewayToken() {
 }
 
 const OPENCLAW_GATEWAY_TOKEN = resolveGatewayToken();
+// What we write into openclaw.json for the gateway token: the placeholder, never the
+// value. openclaw resolves ${ENV} at read time, so config stays secret-free in git.
+const GATEWAY_TOKEN_CONFIG_REF = "${OPENCLAW_GATEWAY_TOKEN}";
 process.env.OPENCLAW_GATEWAY_TOKEN = OPENCLAW_GATEWAY_TOKEN;
 
 // Where the gateway will listen internally (we proxy to it).
@@ -743,8 +746,10 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
     // IMPORTANT: Set both gateway.auth.token (server-side) and gateway.remote.token (client-side)
     // to the same value so the Control UI can connect without "token mismatch" errors.
     await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.auth.mode", "token"]));
-    await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.auth.token", OPENCLAW_GATEWAY_TOKEN]));
-    await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.remote.token", OPENCLAW_GATEWAY_TOKEN]));
+    // Store the ${ENV} placeholder, never the resolved secret: openclaw.json is git-tracked,
+    // and a placeholder already re-resolves to the current env value on every read.
+    await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.auth.token", GATEWAY_TOKEN_CONFIG_REF]));
+    await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.remote.token", GATEWAY_TOKEN_CONFIG_REF]));
     await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.bind", "loopback"]));
     await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.port", String(INTERNAL_GATEWAY_PORT)]));
 
@@ -1443,30 +1448,33 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
     }
   }
 
-  // Sync gateway tokens in config with the current env var on every startup.
-  // This prevents "gateway token mismatch" when OPENCLAW_GATEWAY_TOKEN changes
-  // (e.g. Railway variable update) but the config file still has the old value.
+  // Pin the gateway token config to the ${ENV} placeholder on every startup.
+  // Writing the RESOLVED token here used to plant two plaintext secrets in the
+  // git-tracked openclaw.json on every container start. The placeholder cannot go
+  // stale the way a literal could, so it also subsumes the old "token mismatch" fix.
   if (isConfigured() && OPENCLAW_GATEWAY_TOKEN) {
-    console.log("[wrapper] syncing gateway tokens in config...");
+    console.log("[wrapper] pinning gateway token config to env placeholder...");
     try {
       await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.auth.mode", "token"]));
-      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.auth.token", OPENCLAW_GATEWAY_TOKEN]));
-      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.remote.token", OPENCLAW_GATEWAY_TOKEN]));
-      console.log("[wrapper] gateway tokens synced");
+      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.auth.token", GATEWAY_TOKEN_CONFIG_REF]));
+      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.remote.token", GATEWAY_TOKEN_CONFIG_REF]));
+      console.log("[wrapper] gateway token config pinned");
     } catch (err) {
-      console.warn(`[wrapper] failed to sync gateway tokens: ${String(err)}`);
+      console.warn(`[wrapper] failed to pin gateway token config: ${String(err)}`);
     }
   }
 
-  // Sync qmd memory backend config on every startup so it persists across redeploys.
+  // Memory citations. `memory.backend` was REMOVED here: OpenClaw 2026.8.1 retired the
+  // QMD backend entirely (builtin memory is now the only engine) and the key no longer
+  // exists in the schema, so `config set memory.backend qmd` threw and silently skipped
+  // the citations line that followed it inside the same try.
   if (isConfigured()) {
-    console.log("[wrapper] syncing qmd memory backend config...");
+    console.log("[wrapper] syncing memory config...");
     try {
-      await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "memory.backend", "qmd"]));
       await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "memory.citations", "auto"]));
-      console.log("[wrapper] qmd memory config synced");
+      console.log("[wrapper] memory config synced");
     } catch (err) {
-      console.warn(`[wrapper] failed to sync qmd memory config: ${String(err)}`);
+      console.warn(`[wrapper] failed to sync memory config: ${String(err)}`);
     }
   }
 

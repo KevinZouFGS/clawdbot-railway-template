@@ -62,20 +62,15 @@ RUN apt-get update \
     libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Bun (required by qmd)
+# Install Bun (general-purpose JS runtime; previously pulled in for the qmd sidecar)
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
-# Install qmd – hybrid search sidecar for OpenClaw memory (BM25 + vectors + reranking)
-# qmd bundles node-llama-cpp internally; bun resolves all deps including prebuilt binaries.
-RUN bun install -g https://github.com/tobi/qmd \
-  && QMD_DIR="$(dirname "$(dirname "$(readlink -f "$(which qmd)")")")" \
-  && cd "$QMD_DIR" \
-  && bun install typescript@5 \
-  && if ! grep -q 'transaction<' src/db.ts; then \
-       sed -i -E '/^export interface Database \{/a\  transaction<T extends (...args: any[]) => any>(fn: T): T;' src/db.ts; \
-     fi \
-  && bun run build
+# NOTE: the qmd install was removed here. OpenClaw 2026.8.1 retired the QMD memory
+# backend — builtin memory (per-agent SQLite, BM25 + vectors) is now the only engine —
+# so the sidecar and its node-llama-cpp build were dead weight in the image.
+# This also drops the tobi/qmd `transaction<...>` type patch from 234a428, which existed
+# only to keep that build alive.
 
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash \
