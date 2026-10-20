@@ -36,9 +36,12 @@ RUN set -eux; \
   done
 
 RUN pnpm install --no-frozen-lockfile
-RUN pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
-RUN pnpm ui:install && pnpm ui:build
+# ONE layer, as upstream's Dockerfile does: since 2026.9 the UI build retires the previous
+# dist/control-ui by renaming it, and overlayfs refuses to rename a directory created in an
+# earlier layer (EXDEV). The daffc4e build (2026-10-20) failed exactly there. `pnpm build`
+# already includes ui:build in 10.5; the explicit ui steps keep older refs building.
+RUN pnpm build && pnpm ui:install && pnpm ui:build
 # The wrapper (below) and the template's server.js start `node /openclaw/dist/entry.js`.
 # Fail the BUILD, not the deploy, if the build stops emitting it (the launcher accepts
 # dist/entry.(m)js) or it is not the pinned release: a failed build leaves the running
