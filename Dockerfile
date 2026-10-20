@@ -1,5 +1,7 @@
 # Build openclaw from source to avoid npm packaging gaps (some dist files are not shipped).
-FROM node:22-bookworm AS openclaw-build
+# Node 24: OpenClaw >= 2026.9.3 requires node >=24.16 <25 (package.json engines). The digest is
+# the node:24-bookworm image upstream's own Dockerfile builds v2026.10.5 with.
+FROM node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 AS openclaw-build
 
 # Dependencies needed for openclaw build
 RUN apt-get update \
@@ -37,14 +39,19 @@ RUN pnpm install --no-frozen-lockfile
 RUN pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:install && pnpm ui:build
+# The wrapper (below) and the template's server.js start `node /openclaw/dist/entry.js`.
+# Fail the BUILD, not the deploy, if the build stops emitting it (the launcher accepts
+# dist/entry.(m)js) or it is not the pinned release: a failed build leaves the running
+# deployment untouched.
+RUN test -f dist/entry.js && node dist/entry.js --version | tee /dev/stderr | grep -q "${OPENCLAW_GIT_REF#v}"
 
 
 # Build blogwatcher (RSS/blog feed scanner for ticket pipeline)
 FROM golang:1.24-bookworm AS blogwatcher-build
 RUN go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@latest
 
-# Runtime image
-FROM node:22-bookworm
+# Runtime image (same Node as the build: dist/ and every native module must match it).
+FROM node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
 ENV NODE_ENV=production
 
 RUN apt-get update \
